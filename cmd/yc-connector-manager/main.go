@@ -26,6 +26,9 @@ import (
 	ymqconnector "github.com/yandex-cloud/k8s-cloud-connectors/connector/ymq/controller"
 	ymqconfig "github.com/yandex-cloud/k8s-cloud-connectors/connector/ymq/pkg/config"
 	ymqwebhook "github.com/yandex-cloud/k8s-cloud-connectors/connector/ymq/webhook"
+	ymr "github.com/yandex-cloud/k8s-cloud-connectors/connector/ymr/api/v1"
+	ymrconnector "github.com/yandex-cloud/k8s-cloud-connectors/connector/ymr/controller"
+	ymrconfig "github.com/yandex-cloud/k8s-cloud-connectors/connector/ymr/pkg/config"
 	yos "github.com/yandex-cloud/k8s-cloud-connectors/connector/yos/api/v1"
 	yosconnector "github.com/yandex-cloud/k8s-cloud-connectors/connector/yos/controller"
 	yosconfig "github.com/yandex-cloud/k8s-cloud-connectors/connector/yos/pkg/config"
@@ -65,6 +68,7 @@ func init() {
 	utilruntime.Must(ycr.AddToScheme(scheme))
 	utilruntime.Must(yos.AddToScheme(scheme))
 	utilruntime.Must(ymq.AddToScheme(scheme))
+	utilruntime.Must(ymr.AddToScheme(scheme))
 
 	// Flag section
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
@@ -210,6 +214,7 @@ func execute(log logr.Logger) error {
 	if err := setupYMQConnector(log, mgr); err != nil {
 		return fmt.Errorf("unable to set up %s connector: %w", ymqconfig.LongName, err)
 	}
+
 	if err := setupYMQWebhook(log, mgr); err != nil {
 		return fmt.Errorf("unable to set up %s webhook: %w", ymqconfig.LongName, err)
 	}
@@ -217,8 +222,13 @@ func execute(log logr.Logger) error {
 	if err := setupYOSConnector(log, mgr); err != nil {
 		return fmt.Errorf("unable to set up %s connector: %w", yosconfig.LongName, err)
 	}
+
 	if err := setupYOSWebhook(log, mgr); err != nil {
 		return fmt.Errorf("unable to set up %s webhook: %w", yosconfig.LongName, err)
+	}
+
+	if err := setupYMRConnector(log, mgr, sdk, clusterID); err != nil {
+		return fmt.Errorf("unable to set up %s connector: %w", ymrconfig.LongName, err)
 	}
 
 	// +kubebuilder:scaffold:builder
@@ -345,4 +355,18 @@ func setupYOSWebhook(log logr.Logger, mgr ctrl.Manager) error {
 	}
 
 	return webhook.RegisterValidatingHandler(mgr, &yos.YandexObjectStorage{}, validator)
+}
+
+func setupYMRConnector(log logr.Logger, mgr ctrl.Manager, sdk *ycsdk.SDK, clusterID string) error {
+	log.V(1).Info("starting " + ymrconfig.ShortName + " connector")
+	ymrReconciler, err := ymrconnector.NewYandexManagedRedisReconciler(
+		ctrl.Log.WithName("connector").WithName(ycrconfig.ShortName),
+		mgr.GetClient(),
+		sdk,
+		clusterID,
+	)
+	if err != nil {
+		return err
+	}
+	return ymrReconciler.SetupWithManager(mgr)
 }

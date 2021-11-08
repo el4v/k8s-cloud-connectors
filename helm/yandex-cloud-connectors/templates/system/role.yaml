@@ -135,6 +135,32 @@ rules:
 - apiGroups:
   - connectors.cloud.yandex.com
   resources:
+  - yandexmanagedrediss
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - connectors.cloud.yandex.com
+  resources:
+  - yandexmanagedrediss/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - connectors.cloud.yandex.com
+  resources:
+  - yandexmanagedrediss/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - connectors.cloud.yandex.com
+  resources:
   - yandexmessagequeues
   verbs:
   - create
